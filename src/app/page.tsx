@@ -1,74 +1,16 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-
-type FormValues = {
-  name: string;
-  email: string;
-  phone: string;
-};
-
-type FormErrors = Partial<Record<keyof FormValues, string>>;
-
-const INITIAL_VALUES: FormValues = {
-  name: "",
-  email: "",
-  phone: "",
-};
-
-function validate(values: FormValues): FormErrors {
-  const errors: FormErrors = {};
-
-  if (!values.name.trim()) {
-    errors.name = "이름을 입력해주세요.";
-  }
-
-  if (!values.email.trim()) {
-    errors.email = "이메일을 입력해주세요.";
-  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) {
-    errors.email = "올바른 이메일 형식이 아닙니다.";
-  }
-
-  if (!values.phone.trim()) {
-    errors.phone = "전화번호를 입력해주세요.";
-  } else if (!/^[0-9-+\s()]{7,20}$/.test(values.phone.trim())) {
-    errors.phone = "올바른 전화번호 형식이 아닙니다.";
-  }
-
-  return errors;
-}
+import { useActionState, useState, type FormEvent } from "react";
+import { createLead } from "./actions";
+import {
+  validateLead,
+  type LeadValues as FormValues,
+  type LeadErrors as FormErrors,
+} from "@/lib/validation";
 
 export default function Home() {
-  const [values, setValues] = useState<FormValues>(INITIAL_VALUES);
-  const [errors, setErrors] = useState<FormErrors>({});
-  const [submitted, setSubmitted] = useState(false);
-
-  function handleChange(field: keyof FormValues) {
-    return (event: React.ChangeEvent<HTMLInputElement>) => {
-      setValues((prev) => ({ ...prev, [field]: event.target.value }));
-      setErrors((prev) => ({ ...prev, [field]: undefined }));
-    };
-  }
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const nextErrors = validate(values);
-    setErrors(nextErrors);
-
-    if (Object.keys(nextErrors).length > 0) {
-      return;
-    }
-
-    // TODO: 서버/DB 연동 예정. 지금은 프론트엔드만 동작합니다.
-    console.log("제출된 리드:", values);
-    setSubmitted(true);
-  }
-
-  function handleReset() {
-    setValues(INITIAL_VALUES);
-    setErrors({});
-    setSubmitted(false);
-  }
+  // 제출 완료 후 "다시 신청하기" 시 LeadForm을 리마운트해 상태를 초기화합니다.
+  const [instanceKey, setInstanceKey] = useState(0);
 
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-12">
@@ -81,64 +23,10 @@ export default function Home() {
             </p>
           </header>
 
-          {submitted ? (
-            <div className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl text-green-600 dark:bg-green-500/15">
-                ✓
-              </div>
-              <h2 className="text-lg font-semibold">신청이 완료되었습니다</h2>
-              <p className="mt-2 text-sm text-black/60 dark:text-white/60">
-                입력하신 정보로 곧 연락드리겠습니다.
-              </p>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="mt-6 w-full rounded-lg border border-black/10 px-4 py-2.5 text-sm font-medium transition hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
-              >
-                다시 신청하기
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} noValidate className="space-y-5">
-              <Field
-                id="name"
-                label="이름"
-                type="text"
-                placeholder="홍길동"
-                autoComplete="name"
-                value={values.name}
-                onChange={handleChange("name")}
-                error={errors.name}
-              />
-              <Field
-                id="email"
-                label="이메일"
-                type="email"
-                placeholder="you@example.com"
-                autoComplete="email"
-                value={values.email}
-                onChange={handleChange("email")}
-                error={errors.email}
-              />
-              <Field
-                id="phone"
-                label="전화번호"
-                type="tel"
-                placeholder="010-1234-5678"
-                autoComplete="tel"
-                value={values.phone}
-                onChange={handleChange("phone")}
-                error={errors.phone}
-              />
-
-              <button
-                type="submit"
-                className="w-full rounded-lg bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:opacity-90"
-              >
-                신청하기
-              </button>
-            </form>
-          )}
+          <LeadForm
+            key={instanceKey}
+            onReset={() => setInstanceKey((k) => k + 1)}
+          />
         </div>
 
         <p className="mt-4 text-center text-xs text-black/40 dark:text-white/40">
@@ -149,13 +37,116 @@ export default function Home() {
   );
 }
 
+function LeadForm({ onReset }: { onReset: () => void }) {
+  const [state, formAction, isPending] = useActionState(createLead, null);
+  const [errors, setErrors] = useState<FormErrors>({});
+
+  if (state?.ok) {
+    return (
+      <div className="text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 text-2xl text-green-600 dark:bg-green-500/15">
+          ✓
+        </div>
+        <h2 className="text-lg font-semibold">신청이 완료되었습니다</h2>
+        <p className="mt-2 text-sm text-black/60 dark:text-white/60">
+          입력하신 정보로 곧 연락드리겠습니다.
+        </p>
+        <button
+          type="button"
+          onClick={onReset}
+          className="mt-6 w-full rounded-lg border border-black/10 px-4 py-2.5 text-sm font-medium transition hover:bg-black/5 dark:border-white/15 dark:hover:bg-white/10"
+        >
+          다시 신청하기
+        </button>
+      </div>
+    );
+  }
+
+  // 클라이언트 즉시 검증. 오류가 있으면 preventDefault로 서버 액션 실행을 막습니다.
+  // (JS가 없으면 이 핸들러는 실행되지 않고 서버 액션이 검증을 담당합니다.)
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    const formData = new FormData(event.currentTarget);
+    const values: FormValues = {
+      name: String(formData.get("name") ?? "").trim(),
+      email: String(formData.get("email") ?? "").trim(),
+      phone: String(formData.get("phone") ?? "").trim(),
+    };
+
+    const nextErrors = validateLead(values);
+    if (Object.keys(nextErrors).length > 0) {
+      event.preventDefault();
+      setErrors(nextErrors);
+    } else {
+      setErrors({});
+    }
+  }
+
+  function clearError(field: keyof FormValues) {
+    setErrors((prev) => ({ ...prev, [field]: undefined }));
+  }
+
+  const previous = state && !state.ok ? state.values : undefined;
+
+  return (
+    <form action={formAction} onSubmit={handleSubmit} noValidate className="space-y-5">
+      <Field
+        id="name"
+        label="이름"
+        type="text"
+        placeholder="홍길동"
+        autoComplete="name"
+        defaultValue={previous?.name}
+        onChange={() => clearError("name")}
+        error={errors.name}
+      />
+      <Field
+        id="email"
+        label="이메일"
+        type="email"
+        placeholder="you@example.com"
+        autoComplete="email"
+        defaultValue={previous?.email}
+        onChange={() => clearError("email")}
+        error={errors.email}
+      />
+      <Field
+        id="phone"
+        label="전화번호"
+        type="tel"
+        placeholder="010-1234-5678"
+        autoComplete="tel"
+        defaultValue={previous?.phone}
+        onChange={() => clearError("phone")}
+        error={errors.phone}
+      />
+
+      {state && !state.ok && (state.message || state.errors) && (
+        <p
+          role="alert"
+          className="rounded-lg bg-red-50 px-3.5 py-2.5 text-sm text-red-600 dark:bg-red-500/10 dark:text-red-400"
+        >
+          {state.message ?? "입력값을 다시 확인해주세요."}
+        </p>
+      )}
+
+      <button
+        type="submit"
+        disabled={isPending}
+        className="w-full rounded-lg bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {isPending ? "제출 중..." : "신청하기"}
+      </button>
+    </form>
+  );
+}
+
 type FieldProps = {
   id: keyof FormValues;
   label: string;
   type: string;
   placeholder: string;
   autoComplete: string;
-  value: string;
+  defaultValue?: string;
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
   error?: string;
 };
@@ -166,7 +157,7 @@ function Field({
   type,
   placeholder,
   autoComplete,
-  value,
+  defaultValue,
   onChange,
   error,
 }: FieldProps) {
@@ -181,7 +172,7 @@ function Field({
         type={type}
         placeholder={placeholder}
         autoComplete={autoComplete}
-        value={value}
+        defaultValue={defaultValue}
         onChange={onChange}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
