@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { leads } from "@/db/schema";
+import { leads, leadNotes } from "@/db/schema";
 import { isValidBasicAuth } from "@/lib/auth";
 import {
   normalizeLead,
@@ -62,5 +62,53 @@ export async function deleteLead(id: string): Promise<MutateResult> {
   } catch (error) {
     console.error("리드 삭제 실패:", error);
     return { ok: false, message: "삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." };
+  }
+}
+
+// 메모 뮤테이션 결과 타입. 리드 검증과 무관하므로 별도로 단순하게 둡니다.
+export type NoteResult = { ok: true } | { ok: false; message: string };
+
+const MAX_NOTE_LENGTH = 2000;
+
+// 리드에 메모를 추가합니다. 리드당 여러 개를 시간순으로 쌓을 수 있습니다.
+export async function addLeadNote(
+  leadId: string,
+  body: string,
+): Promise<NoteResult> {
+  if (!(await isAdmin())) {
+    return { ok: false, message: "권한이 없습니다." };
+  }
+
+  const clean = body.trim();
+  if (!clean) {
+    return { ok: false, message: "메모 내용을 입력해주세요." };
+  }
+  if (clean.length > MAX_NOTE_LENGTH) {
+    return { ok: false, message: `메모는 ${MAX_NOTE_LENGTH}자 이내로 입력해주세요.` };
+  }
+
+  try {
+    await db.insert(leadNotes).values({ leadId, body: clean });
+    revalidatePath("/admin");
+    return { ok: true };
+  } catch (error) {
+    console.error("메모 추가 실패:", error);
+    return { ok: false, message: "메모 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." };
+  }
+}
+
+// 메모를 개별 삭제합니다.
+export async function deleteLeadNote(noteId: string): Promise<NoteResult> {
+  if (!(await isAdmin())) {
+    return { ok: false, message: "권한이 없습니다." };
+  }
+
+  try {
+    await db.delete(leadNotes).where(eq(leadNotes.id, noteId));
+    revalidatePath("/admin");
+    return { ok: true };
+  } catch (error) {
+    console.error("메모 삭제 실패:", error);
+    return { ok: false, message: "메모 삭제 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요." };
   }
 }

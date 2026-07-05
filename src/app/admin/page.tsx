@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
-import { desc } from "drizzle-orm";
+import { desc, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { leads } from "@/db/schema";
+import { leads, leadNotes, type LeadNote } from "@/db/schema";
 import { LeadsTable } from "./leads-table";
 
 export const metadata: Metadata = {
@@ -13,6 +13,27 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminPage() {
   const rows = await db.select().from(leads).orderBy(desc(leads.createdAt));
+
+  // 리드별 메모를 한 번의 쿼리로 가져와(N+1 방지) 리드 id 기준으로 그룹핑합니다.
+  // 오래된 것부터 최신 순으로 정렬해 대화처럼 위에서 아래로 쌓이게 합니다.
+  const notesByLead = new Map<string, LeadNote[]>();
+  if (rows.length > 0) {
+    const notes = await db
+      .select()
+      .from(leadNotes)
+      .where(
+        inArray(
+          leadNotes.leadId,
+          rows.map((r) => r.id),
+        ),
+      )
+      .orderBy(leadNotes.createdAt);
+    for (const note of notes) {
+      const bucket = notesByLead.get(note.leadId);
+      if (bucket) bucket.push(note);
+      else notesByLead.set(note.leadId, [note]);
+    }
+  }
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
@@ -33,7 +54,10 @@ export default async function AdminPage() {
           아직 접수된 리드가 없습니다.
         </div>
       ) : (
-        <LeadsTable leads={rows} />
+        <LeadsTable
+          leads={rows}
+          notesByLead={Object.fromEntries(notesByLead)}
+        />
       )}
     </main>
   );
