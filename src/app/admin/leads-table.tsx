@@ -10,11 +10,20 @@ import type { Lead } from "@/db/schema";
 import { deleteLead, updateLead } from "./actions";
 
 // 서버/클라이언트 렌더 결과가 일치하도록 로케일·타임존을 고정합니다.
+// (locale/timezone을 고정해도 Node/브라우저 간 ICU 버전 차이로 미세하게 다를 수 있어
+//  날짜 셀에는 suppressHydrationWarning을 함께 사용합니다.)
 const dateFormatter = new Intl.DateTimeFormat("ko-KR", {
   dateStyle: "medium",
   timeStyle: "short",
   timeZone: "Asia/Seoul",
 });
+
+// aria-label은 스크린리더가 읽는 사용자 대상 텍스트이므로 한국어로 노출합니다.
+const FIELD_LABELS: Record<keyof LeadValues, string> = {
+  name: "이름",
+  email: "이메일",
+  phone: "전화번호",
+};
 
 export function LeadsTable({ leads }: { leads: Lead[] }) {
   return (
@@ -63,6 +72,9 @@ function LeadRow({ lead }: { lead: Lead }) {
     setMessage(null);
   }
 
+  const setField = (field: keyof LeadValues, value: string) =>
+    setValues((s) => ({ ...s, [field]: value }));
+
   function save() {
     const nextErrors = validateLead(values);
     if (Object.keys(nextErrors).length > 0) {
@@ -104,7 +116,7 @@ function LeadRow({ lead }: { lead: Lead }) {
             field="name"
             value={values.name}
             error={errors.name}
-            onChange={(v) => setValues((s) => ({ ...s, name: v }))}
+            onChange={setField}
           />
         </td>
         <td className="px-4 py-3">
@@ -113,7 +125,7 @@ function LeadRow({ lead }: { lead: Lead }) {
             type="email"
             value={values.email}
             error={errors.email}
-            onChange={(v) => setValues((s) => ({ ...s, email: v }))}
+            onChange={setField}
           />
         </td>
         <td className="px-4 py-3">
@@ -122,10 +134,13 @@ function LeadRow({ lead }: { lead: Lead }) {
             type="tel"
             value={values.phone}
             error={errors.phone}
-            onChange={(v) => setValues((s) => ({ ...s, phone: v }))}
+            onChange={setField}
           />
         </td>
-        <td className="px-4 py-3 text-black/40 dark:text-white/40">
+        <td
+          className="px-4 py-3 text-black/40 dark:text-white/40"
+          suppressHydrationWarning
+        >
           {dateFormatter.format(lead.createdAt)}
         </td>
         <td className="px-4 py-3">
@@ -201,15 +216,15 @@ function EditCell({
   type?: string;
   value: string;
   error?: string;
-  onChange: (value: string) => void;
+  onChange: (field: keyof LeadValues, value: string) => void;
 }) {
   return (
     <div>
       <input
-        aria-label={field}
+        aria-label={FIELD_LABELS[field]}
         type={type}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange(field, e.target.value)}
         aria-invalid={error ? true : undefined}
         className={`w-full rounded-md border bg-transparent px-2.5 py-1.5 text-sm outline-none transition focus:ring-2 ${
           error

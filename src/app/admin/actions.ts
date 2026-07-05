@@ -4,11 +4,14 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { leads } from "@/db/schema";
-import { validateLead, type LeadValues, type LeadErrors } from "@/lib/validation";
+import {
+  normalizeLead,
+  validateLead,
+  type LeadActionResult,
+  type LeadValues,
+} from "@/lib/validation";
 
-export type MutateResult =
-  | { ok: true }
-  | { ok: false; errors?: LeadErrors; message?: string };
+export type MutateResult = LeadActionResult;
 
 // 어드민에서 리드를 수정합니다. 클라이언트에서 넘어온 값도 신뢰할 수 없으므로
 // 서버에서 다시 검증합니다. (현재 인증 없음 — 추후 인가 검사 추가 지점)
@@ -16,11 +19,7 @@ export async function updateLead(
   id: string,
   values: LeadValues,
 ): Promise<MutateResult> {
-  const clean: LeadValues = {
-    name: String(values?.name ?? "").trim(),
-    email: String(values?.email ?? "").trim(),
-    phone: String(values?.phone ?? "").trim(),
-  };
+  const clean = normalizeLead(values);
 
   const errors = validateLead(clean);
   if (Object.keys(errors).length > 0) {

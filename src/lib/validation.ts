@@ -8,6 +8,25 @@ export type LeadValues = {
 
 export type LeadErrors = Partial<Record<keyof LeadValues, string>>;
 
+// 리드를 다루는 서버 액션들이 공유하는 결과 타입.
+export type LeadActionResult =
+  | { ok: true }
+  | { ok: false; errors?: LeadErrors; message?: string; values?: LeadValues };
+
+// 원본 입력(FormData 값, 클라이언트 객체 등)을 신뢰 가능한 LeadValues로 정규화합니다.
+// input 자체가 null/undefined거나, 각 필드가 문자열이 아닌 경우(FormData의 File 등)도 안전하게 처리합니다.
+export function normalizeLead(
+  input?: { name?: unknown; email?: unknown; phone?: unknown } | null,
+): LeadValues {
+  const clean = (value: unknown) =>
+    typeof value === "string" ? value.trim() : "";
+  return {
+    name: clean(input?.name),
+    email: clean(input?.email),
+    phone: clean(input?.phone),
+  };
+}
+
 export function validateLead(values: LeadValues): LeadErrors {
   const errors: LeadErrors = {};
 
