@@ -3,6 +3,7 @@
 import { useActionState, useState, type FormEvent } from "react";
 import { createLead } from "./actions";
 import {
+  normalizeLead,
   validateLead,
   type LeadValues as FormValues,
   type LeadErrors as FormErrors,
@@ -66,11 +67,11 @@ function LeadForm({ onReset }: { onReset: () => void }) {
   // (JS가 없으면 이 핸들러는 실행되지 않고 서버 액션이 검증을 담당합니다.)
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     const formData = new FormData(event.currentTarget);
-    const values: FormValues = {
-      name: String(formData.get("name") ?? "").trim(),
-      email: String(formData.get("email") ?? "").trim(),
-      phone: String(formData.get("phone") ?? "").trim(),
-    };
+    const values = normalizeLead({
+      name: formData.get("name"),
+      email: formData.get("email"),
+      phone: formData.get("phone"),
+    });
 
     const nextErrors = validateLead(values);
     if (Object.keys(nextErrors).length > 0) {
