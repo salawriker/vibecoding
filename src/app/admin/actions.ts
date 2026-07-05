@@ -9,6 +9,7 @@ import { isValidBasicAuth } from "@/lib/auth";
 import {
   normalizeLead,
   validateLead,
+  validateNoteBody,
   type LeadActionResult,
   type LeadValues,
 } from "@/lib/validation";
@@ -68,8 +69,6 @@ export async function deleteLead(id: string): Promise<MutateResult> {
 // 메모 뮤테이션 결과 타입. 리드 검증과 무관하므로 별도로 단순하게 둡니다.
 export type NoteResult = { ok: true } | { ok: false; message: string };
 
-const MAX_NOTE_LENGTH = 2000;
-
 // 리드에 메모를 추가합니다. 리드당 여러 개를 시간순으로 쌓을 수 있습니다.
 export async function addLeadNote(
   leadId: string,
@@ -79,13 +78,12 @@ export async function addLeadNote(
     return { ok: false, message: "권한이 없습니다." };
   }
 
+  // 클라이언트와 동일한 규칙을 공유 헬퍼로 검증합니다(권위 있는 검증).
+  const error = validateNoteBody(body);
+  if (error) {
+    return { ok: false, message: error };
+  }
   const clean = body.trim();
-  if (!clean) {
-    return { ok: false, message: "메모 내용을 입력해주세요." };
-  }
-  if (clean.length > MAX_NOTE_LENGTH) {
-    return { ok: false, message: `메모는 ${MAX_NOTE_LENGTH}자 이내로 입력해주세요.` };
-  }
 
   try {
     await db.insert(leadNotes).values({ leadId, body: clean });

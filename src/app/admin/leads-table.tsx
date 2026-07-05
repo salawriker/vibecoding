@@ -2,7 +2,9 @@
 
 import { useState, useTransition } from "react";
 import {
+  MAX_NOTE_LENGTH,
   validateLead,
+  validateNoteBody,
   type LeadValues,
   type LeadErrors,
 } from "@/lib/validation";
@@ -264,14 +266,15 @@ function NotesPanel({
   const [isPending, startTransition] = useTransition();
 
   function add() {
-    const clean = body.trim();
-    if (!clean) {
-      setError("메모 내용을 입력해주세요.");
+    // 서버와 동일한 공유 검증으로 즉시 피드백을 줍니다(서버가 최종 권위).
+    const validationError = validateNoteBody(body);
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setError(null);
     startTransition(async () => {
-      const result = await addLeadNote(leadId, clean);
+      const result = await addLeadNote(leadId, body.trim());
       if (result.ok) {
         setBody("");
       } else {
@@ -338,6 +341,7 @@ function NotesPanel({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={2}
+          maxLength={MAX_NOTE_LENGTH}
           placeholder="메모를 입력하세요"
           className="w-full resize-y rounded-md border border-black/15 bg-transparent px-2.5 py-1.5 text-sm outline-none transition focus:border-foreground focus:ring-2 focus:ring-foreground/20 dark:border-white/20"
         />
