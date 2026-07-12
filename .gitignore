@@ -24,6 +24,9 @@
 .DS_Store
 *.pem
 
+# playwright MCP 검증 산출물(스냅샷/콘솔 로그)
+.playwright-mcp/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
