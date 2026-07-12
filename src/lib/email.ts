@@ -43,6 +43,11 @@ export async function sendLeadNotification(lead: LeadValues): Promise<void> {
           <li><strong>이름:</strong> ${escapeHtml(lead.name)}</li>
           <li><strong>이메일:</strong> ${escapeHtml(lead.email)}</li>
           <li><strong>전화번호:</strong> ${escapeHtml(lead.phone)}</li>
+          <li><strong>문의 내용:</strong> ${
+            lead.message
+              ? escapeHtml(lead.message).replace(/\n/g, "<br>")
+              : "(없음)"
+          }</li>
         </ul>
       `,
     });

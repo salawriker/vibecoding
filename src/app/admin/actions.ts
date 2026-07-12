@@ -41,7 +41,11 @@ export async function updateLead(
   }
 
   try {
-    await db.update(leads).set(clean).where(eq(leads.id, id));
+    // 빈 문의 내용은 null로 저장합니다("" 대신).
+    await db
+      .update(leads)
+      .set({ ...clean, message: clean.message || null })
+      .where(eq(leads.id, id));
     revalidatePath("/admin");
     return { ok: true };
   } catch (error) {

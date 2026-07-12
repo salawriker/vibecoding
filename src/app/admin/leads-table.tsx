@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import {
+  MAX_MESSAGE_LENGTH,
   MAX_NOTE_LENGTH,
   validateLead,
   validateNoteBody,
@@ -30,10 +31,11 @@ const FIELD_LABELS: Record<keyof LeadValues, string> = {
   name: "이름",
   email: "이메일",
   phone: "전화번호",
+  message: "문의 내용",
 };
 
-// 표의 열 개수(이름·이메일·전화번호·접수일시·작업). 메모 패널 행의 colSpan에 사용합니다.
-const COLUMN_COUNT = 5;
+// 표의 열 개수(이름·이메일·전화번호·문의 내용·접수일시·작업). 메모 패널 행의 colSpan에 사용합니다.
+const COLUMN_COUNT = 6;
 
 export function LeadsTable({
   leads,
@@ -50,6 +52,7 @@ export function LeadsTable({
             <th className="px-4 py-3 font-medium">이름</th>
             <th className="px-4 py-3 font-medium">이메일</th>
             <th className="px-4 py-3 font-medium">전화번호</th>
+            <th className="px-4 py-3 font-medium">문의 내용</th>
             <th className="px-4 py-3 font-medium">접수일시</th>
             <th className="px-4 py-3 text-right font-medium">작업</th>
           </tr>
@@ -75,13 +78,19 @@ function LeadRow({ lead, notes }: { lead: Lead; notes: LeadNote[] }) {
     name: lead.name,
     email: lead.email,
     phone: lead.phone,
+    message: lead.message ?? "",
   });
   const [errors, setErrors] = useState<LeadErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function startEdit() {
-    setValues({ name: lead.name, email: lead.email, phone: lead.phone });
+    setValues({
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      message: lead.message ?? "",
+    });
     setErrors({});
     setMessage(null);
     setEditing(true);
@@ -158,6 +167,15 @@ function LeadRow({ lead, notes }: { lead: Lead; notes: LeadNote[] }) {
             onChange={setField}
           />
         </td>
+        <td className="px-4 py-3">
+          <EditCell
+            field="message"
+            multiline
+            value={values.message}
+            error={errors.message}
+            onChange={setField}
+          />
+        </td>
         <td
           className="px-4 py-3 text-black/40 dark:text-white/40"
           suppressHydrationWarning
@@ -200,6 +218,15 @@ function LeadRow({ lead, notes }: { lead: Lead; notes: LeadNote[] }) {
         </td>
         <td className="px-4 py-3 text-black/70 dark:text-white/70">
           {lead.phone}
+        </td>
+        <td className="px-4 py-3 text-black/70 dark:text-white/70">
+          {lead.message ? (
+            <p className="max-w-xs whitespace-pre-wrap break-words">
+              {lead.message}
+            </p>
+          ) : (
+            <span className="text-black/30 dark:text-white/30">—</span>
+          )}
         </td>
         <td
           className="px-4 py-3 text-black/40 dark:text-white/40"
@@ -362,30 +389,45 @@ function NotesPanel({
 function EditCell({
   field,
   type = "text",
+  multiline = false,
   value,
   error,
   onChange,
 }: {
   field: keyof LeadValues;
   type?: string;
+  multiline?: boolean;
   value: string;
   error?: string;
   onChange: (field: keyof LeadValues, value: string) => void;
 }) {
+  const className = `w-full rounded-md border bg-transparent px-2.5 py-1.5 text-sm outline-none transition focus:ring-2 ${
+    error
+      ? "border-red-400 focus:ring-red-400/40"
+      : "border-black/15 focus:border-foreground focus:ring-foreground/20 dark:border-white/20"
+  }`;
   return (
     <div>
-      <input
-        aria-label={FIELD_LABELS[field]}
-        type={type}
-        value={value}
-        onChange={(e) => onChange(field, e.target.value)}
-        aria-invalid={error ? true : undefined}
-        className={`w-full rounded-md border bg-transparent px-2.5 py-1.5 text-sm outline-none transition focus:ring-2 ${
-          error
-            ? "border-red-400 focus:ring-red-400/40"
-            : "border-black/15 focus:border-foreground focus:ring-foreground/20 dark:border-white/20"
-        }`}
-      />
+      {multiline ? (
+        <textarea
+          aria-label={FIELD_LABELS[field]}
+          value={value}
+          rows={3}
+          maxLength={MAX_MESSAGE_LENGTH}
+          onChange={(e) => onChange(field, e.target.value)}
+          aria-invalid={error ? true : undefined}
+          className={`${className} min-w-3xs resize-y`}
+        />
+      ) : (
+        <input
+          aria-label={FIELD_LABELS[field]}
+          type={type}
+          value={value}
+          onChange={(e) => onChange(field, e.target.value)}
+          aria-invalid={error ? true : undefined}
+          className={className}
+        />
+      )}
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   );

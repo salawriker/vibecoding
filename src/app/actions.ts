@@ -22,6 +22,7 @@ export async function createLead(
     name: formData.get("name"),
     email: formData.get("email"),
     phone: formData.get("phone"),
+    message: formData.get("message"),
   });
 
   const errors = validateLead(values);
@@ -30,7 +31,8 @@ export async function createLead(
   }
 
   try {
-    await db.insert(leads).values(values);
+    // 빈 문의 내용은 null로 저장합니다("" 대신).
+    await db.insert(leads).values({ ...values, message: values.message || null });
 
     // 관리자 알림 이메일 (best-effort). 응답을 지연시키지 않도록 응답 후 실행합니다.
     after(() => sendLeadNotification(values));

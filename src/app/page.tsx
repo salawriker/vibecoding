@@ -9,6 +9,7 @@ import {
 } from "react";
 import { createLead } from "./actions";
 import {
+  MAX_MESSAGE_LENGTH,
   normalizeLead,
   validateLead,
   type LeadValues as FormValues,
@@ -87,6 +88,7 @@ function LeadForm({ onReset }: { onReset: () => void }) {
       name: formData.get("name"),
       email: formData.get("email"),
       phone: formData.get("phone"),
+      message: formData.get("message"),
     });
 
     const nextErrors = validateLead(values);
@@ -151,6 +153,15 @@ function LeadForm({ onReset }: { onReset: () => void }) {
         onChange={() => clearError("phone")}
         error={errors.phone}
       />
+      <TextareaField
+        id="message"
+        label="문의 내용"
+        optional
+        placeholder="상담받고 싶은 내용을 자유롭게 남겨주세요. (선택)"
+        defaultValue={previous?.message}
+        onChange={() => clearError("message")}
+        error={errors.message}
+      />
 
       {state && !state.ok && (state.message || state.errors) && (
         <p
@@ -209,6 +220,60 @@ function Field({
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
         className={`w-full rounded-lg border bg-transparent px-3.5 py-2.5 text-sm outline-none transition placeholder:text-black/30 focus:ring-2 dark:placeholder:text-white/30 ${
+          error
+            ? "border-red-400 focus:ring-red-400/40"
+            : "border-black/15 focus:border-foreground focus:ring-foreground/20 dark:border-white/20"
+        }`}
+      />
+      {error && (
+        <p id={`${id}-error`} className="mt-1.5 text-xs text-red-500">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+type TextareaFieldProps = {
+  id: keyof FormValues;
+  label: string;
+  placeholder: string;
+  optional?: boolean;
+  defaultValue?: string;
+  onChange: (event: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  error?: string;
+};
+
+function TextareaField({
+  id,
+  label,
+  placeholder,
+  optional,
+  defaultValue,
+  onChange,
+  error,
+}: TextareaFieldProps) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium">
+        {label}
+        {optional && (
+          <span className="ml-1 font-normal text-black/40 dark:text-white/40">
+            (선택)
+          </span>
+        )}
+      </label>
+      <textarea
+        id={id}
+        name={id}
+        rows={4}
+        maxLength={MAX_MESSAGE_LENGTH}
+        placeholder={placeholder}
+        defaultValue={defaultValue}
+        onChange={onChange}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        className={`w-full resize-y rounded-lg border bg-transparent px-3.5 py-2.5 text-sm outline-none transition placeholder:text-black/30 focus:ring-2 dark:placeholder:text-white/30 ${
           error
             ? "border-red-400 focus:ring-red-400/40"
             : "border-black/15 focus:border-foreground focus:ring-foreground/20 dark:border-white/20"
