@@ -3,7 +3,11 @@
 import { after } from "next/server";
 import { db } from "@/db";
 import { leads } from "@/db/schema";
-import { sendLeadNotification } from "@/lib/email";
+import {
+  sendLeadNotification,
+  sendErrorNotification,
+  type ErrorReport,
+} from "@/lib/email";
 import { normalizeLead, validateLead, type LeadActionResult } from "@/lib/validation";
 
 export type CreateLeadState = LeadActionResult;
@@ -40,4 +44,10 @@ export async function createLead(
       values,
     };
   }
+}
+
+// 클라이언트 에러 바운더리(error.tsx / global-error.tsx)에서 호출.
+// 처리되지 않은 오류가 잡히면 관리자에게 이메일 알림을 보냅니다. best-effort.
+export async function reportError(report: ErrorReport): Promise<void> {
+  await sendErrorNotification(report);
 }
