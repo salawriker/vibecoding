@@ -1,11 +1,13 @@
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
 
-// 리드(잠재고객) 테이블: 이름, 이메일, 전화번호를 수집합니다.
+// 리드(잠재고객) 테이블: 이름, 이메일, 전화번호, 문의 내용을 수집합니다.
+// message는 선택 입력이라 nullable(기존 리드에는 값이 없을 수 있음).
 export const leads = pgTable("leads", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   email: text("email").notNull(),
   phone: text("phone").notNull(),
+  message: text("message"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
