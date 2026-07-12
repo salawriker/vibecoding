@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useState, type FormEvent } from "react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { createLead } from "./actions";
 import {
   normalizeLead,
@@ -8,6 +14,7 @@ import {
   type LeadValues as FormValues,
   type LeadErrors as FormErrors,
 } from "@/lib/validation";
+import { LeadEvent, identifyLead, trackEvent } from "@/lib/analytics";
 
 export default function Home() {
   // 제출 완료 후 "다시 신청하기" 시 LeadForm을 리마운트해 상태를 초기화합니다.
@@ -41,6 +48,15 @@ export default function Home() {
 function LeadForm({ onReset }: { onReset: () => void }) {
   const [state, formAction, isPending] = useActionState(createLead, null);
   const [errors, setErrors] = useState<FormErrors>({});
+  // 방문자가 폼 작성을 "시작"한 순간을 한 번만 기록하기 위한 플래그.
+  const startedRef = useRef(false);
+
+  // 제출이 서버에서 최종 성공하면 성공 이벤트를 한 번 기록합니다.
+  useEffect(() => {
+    if (state?.ok) {
+      trackEvent(LeadEvent.SubmitSucceeded);
+    }
+  }, [state?.ok]);
 
   if (state?.ok) {
     return (
@@ -77,12 +93,27 @@ function LeadForm({ onReset }: { onReset: () => void }) {
     if (Object.keys(nextErrors).length > 0) {
       event.preventDefault();
       setErrors(nextErrors);
+      trackEvent(LeadEvent.ValidationFailed, {
+        fields: Object.keys(nextErrors),
+      });
     } else {
       setErrors({});
+      // 검증을 통과한 제출 시점에 세션을 이 잠재고객(이메일)에 연결하고
+      // 제출 이벤트를 남깁니다. 이후 서버 액션이 실제 저장을 처리합니다.
+      identifyLead(values.email, { name: values.name, phone: values.phone });
+      trackEvent(LeadEvent.Submitted);
     }
   }
 
+  // 첫 입력 시 "작성 시작"을 한 번만 기록합니다(퍼널 진입 지점).
+  function markStarted() {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    trackEvent(LeadEvent.FormStarted);
+  }
+
   function clearError(field: keyof FormValues) {
+    markStarted();
     setErrors((prev) => ({ ...prev, [field]: undefined }));
   }
 

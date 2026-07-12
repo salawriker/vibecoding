@@ -27,6 +27,19 @@ export function normalizeLead(
   };
 }
 
+// 리드 메모 검증. 서버 액션(권위)과 어드민 UI(즉시 피드백)가 공유합니다.
+export const MAX_NOTE_LENGTH = 2000;
+
+// 메모 본문을 검증해 오류 메시지를 반환합니다. 유효하면 null.
+export function validateNoteBody(body: string): string | null {
+  const clean = body.trim();
+  if (!clean) return "메모 내용을 입력해주세요.";
+  if (clean.length > MAX_NOTE_LENGTH) {
+    return `메모는 ${MAX_NOTE_LENGTH}자 이내로 입력해주세요.`;
+  }
+  return null;
+}
+
 export function validateLead(values: LeadValues): LeadErrors {
   const errors: LeadErrors = {};
 
